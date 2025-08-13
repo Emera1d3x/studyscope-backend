@@ -2,23 +2,28 @@ import { ParentModel } from '../../models/model.user.js';
 import { emailParentForgotPassword } from '../../emails/parent/email.parent.forgotpassword.js';
 
 export async function forgotParentPassword(req, res) {
-  const emailInput = req.body.email;
-  if (!emailInput || !emailInput.includes('@')) {
-    res.json('Fail:InvalidEmail'); return;
+  try {
+    const emailInput = req.body.email;
+    if (!emailInput || !emailInput.includes('@')) {
+      return res.status(400).json({ error: 'Invalid email' });
+    }
+    const parent = await ParentModel.findOne({ email: emailInput });
+    if (!parent) {
+      return res.status(400).json({ error: 'Email not found' });
+    }
+    const resetToken = resetPasswordTokenGenerator(12);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    parent.resetPasswordToken = resetToken;
+    parent.resetPasswordExpiresAt = expiresAt;
+    await parent.save();
+    const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
+    await emailParentForgotPassword(parent.email, resetLink, parent.name);
+    console.log(`Password Reset Link for ${parent.email}: ${resetLink}`);
+    res.json('Success:ResetLinkSent');
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal server error' });
   }
-  const parent = await ParentModel.findOne({ email: emailInput });
-  if (!parent) {
-    res.json('Fail:EmailNotFound'); return;
-  }
-  const resetToken = resetPasswordTokenGenerator(12);
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-  parent.resetPasswordToken = resetToken;
-  parent.resetPasswordExpiresAt = expiresAt;
-  await parent.save();
-  const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
-  await emailParentForgotPassword(parent.email, resetLink, parent.name);
-  console.log(`Password Reset Link for ${parent.email}: ${resetLink}`);
-  res.json('Success:ResetLinkSent');
 }
 
 function resetPasswordTokenGenerator(length) {

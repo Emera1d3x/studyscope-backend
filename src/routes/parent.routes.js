@@ -1,4 +1,5 @@
 import express from 'express';
+import { signupParent } from '../controllers/parent/auth.parent.signup.js';
 import { loginParent } from '../controllers/parent/auth.parent.login.js';
 import { logoutParent } from '../controllers/parent/auth.parent.logout.js';
 import { refreshParent } from '../controllers/parent/auth.parent.refresh.js';
@@ -8,10 +9,11 @@ import { emailParentForgotPassword } from '../emails/parent/email.parent.forgotp
 
 const router = express.Router();
 
+router.post('/signup', signupParent);
 router.post('/login', loginParent);
 router.post('/logout', logoutParent);
 router.get('/refresh', refreshParent);
-router.post('/reset-password', resetParentPassword);
+router.post('/reset-password/:token', resetParentPassword);
 router.get('/profile', fetchParentProfile);
 router.post('/forgot-password', emailParentForgotPassword);
 

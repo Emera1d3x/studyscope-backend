@@ -3,9 +3,13 @@ import { ParentModel } from '../../models/model.user.js';
 export async function fetchParentProfile(req, res) {
   try {
     const parentId = req.userId;
-    if (!parentId) {res.status(401).json('MissingUserIdInRequest'); return;}
+    if (!parentId) {
+      return res.status(401).json({ error: 'Missing userId in request' });
+    }
     const parent = await ParentModel.findById(parentId).select('name email loginMethod phoneNumber paymentHistory');
-    if (!parent) {res.status(404).json('ParentNotFound'); return;}
+    if (!parent) {
+      return res.status(404).json({ error: 'Parent not found' });
+    }
     res.status(200).json({
       name: parent.name,
       email: parent.email,
@@ -15,6 +19,6 @@ export async function fetchParentProfile(req, res) {
     });
   } catch (err) {
     console.error('FetchParentProfileError:', err);
-    res.status(500).json('InternalServerError');
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
