@@ -23,9 +23,14 @@ export async function signupParent(req, res) {
       if (passwordInput.length <= 4) {return res.status(400).json({ error: 'Password too short' });}
       if (passwordInput.length > 20) {return res.status(400).json({ error: 'Password too long' });}
       const existingParent = await ParentModel.findOne({ email: emailInput });
+      const existingStudent = await StudentModel.findOne({ email: emailInput });
       if (existingParent) {
-        if (existingParent.emailVerified) {return res.status(400).json({ error: 'Email already exists' });}
+        if (existingParent.emailVerified) {return res.status(400).json({ error: 'Parent Email Already Used' });}
         else {await existingParent.deleteOne();}
+      }
+      if (existingStudent) {
+        if (existingStudent.emailVerified) {return res.status(400).json({ error: 'Student Email Already Used' });}
+        else {await existingStudent.deleteOne();}
       }
       const verificationTokenSecret = Math.floor(100000 + Math.random() * 900000);
       const parent = new ParentModel({

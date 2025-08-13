@@ -18,7 +18,7 @@ const BaseUserSchema = new Schema(
 );
 
 const ParentSchema = new Schema({
-  phoneNumber: { type: String, required: true },
+  phoneNumber: { type: String, required: false },
   paymentHistory: [
     {
       date: { type: Date, required: true },
