@@ -7,9 +7,6 @@ import { emailParentVerify } from '../../emails/parent/email.parent.verify.js';
 export async function signupParent(req, res) {
   try {
     const loginMethodInput = req.body.loginMethod;
-    if (!loginMethodInput) {
-      return res.status(400).json({ error: 'Missing loginMethod' });
-    }
     if (loginMethodInput === 'email') {
       const nameInput = req.body.name;
       const emailInput = req.body.email;
