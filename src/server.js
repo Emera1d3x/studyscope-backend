@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import parentRoutes from './routes/parent.routes.js';
 import studentRoutes from './routes/student.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 import rateLimit from 'express-rate-limit';
 
 dotenv.config();
@@ -42,5 +43,6 @@ const apiLimiter = rateLimit({
 });
 
 app.use('/api', apiLimiter);
+app.use('/api/admin', adminRoutes);
 app.use('/api/parent', parentRoutes);
 app.use('/api/student', studentRoutes);

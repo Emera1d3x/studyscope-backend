@@ -1,17 +1,17 @@
 import { ParentModel } from '../../models/model.user.js';
 import RefreshToken from '../../models/refreshtoken.model.js';
 import { generateAccessToken, generateRefreshToken } from '../../generators/generator.token.js';
+import { emailParentSuccess } from '../../emails/parent/email.parent.success.js';
 
 export async function verifyParentEmail(req, res) {
   try {
-    const codeInput = req.body.code;
-    const emailInput = req.body.email;
-    if (!codeInput || !emailInput) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    const { email, code } = req.query;
+    if (!code || !email) {
+      return res.status(400).json({ error: 'Failed' });
     }
     const parent = await ParentModel.findOne({
-      email: emailInput,
-      verificationToken: codeInput,
+      email: email,
+      verificationToken: code,
       verificationTokenExpiresAt: { $gt: Date.now() },
     });
     if (!parent) {return res.status(400).json({ error: 'Invalid or expired token' });}
@@ -20,10 +20,10 @@ export async function verifyParentEmail(req, res) {
     parent.verificationTokenExpiresAt = undefined;
     await parent.save();
     console.log(`Parent ${parent.email} Email verified`);
-    const accessToken = generateAccessToken(parent._id);
+    const accessToken = generateAccessToken(parent);
     const refreshToken = generateRefreshToken(parent);
     const expiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await new RefreshToken({ user: parent._id, token: refreshToken, expiry }).save();
+    await new RefreshToken({ userId: parent._id, token: refreshToken, expiresAt: expiry }).save();
     res
       .cookie('accessToken', accessToken, {
         httpOnly: true,
@@ -38,6 +38,7 @@ export async function verifyParentEmail(req, res) {
         maxAge: 7 * 24 * 60 * 60 * 1000,
       })
       .json('Success:EmailVerified');
+    await emailParentSuccess(parent.email);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Internal server error' });

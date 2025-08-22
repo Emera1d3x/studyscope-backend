@@ -16,7 +16,7 @@ export async function forgotParentPassword(req, res) {
     parent.resetPasswordToken = resetToken;
     parent.resetPasswordExpiresAt = expiresAt;
     await parent.save();
-    const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
+    const resetLink = `http://localhost:3000/reset-password?token=${resetToken}`;
     await emailParentForgotPassword(parent.email, resetLink, parent.name);
     console.log(`Password Reset Link for ${parent.email}: ${resetLink}`);
     res.json('Success:ResetLinkSent');

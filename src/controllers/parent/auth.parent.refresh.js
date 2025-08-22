@@ -7,8 +7,8 @@ export async function refreshParent(req, res) {
     const refreshToken = req.cookies['refreshToken'];
     if (!refreshToken) {return res.status(401).json({ error: 'Missing refresh token' });}
     const existingToken = await RefreshToken.findOne({ token: refreshToken });
-    if (!existingToken || existingToken.expiry <= new Date()) {return res.status(401).json({ error: 'Invalid or expired refresh token' });}
-    jwt.verify(
+    if (!existingToken || existingToken.expiresAt <= new Date()) {return res.status(401).json({ error: 'Invalid or expired refresh token' });}
+    await jwt.verify(
       refreshToken,
       process.env.JWT_REFRESH_SECRET,
       async (err, decoded) => {

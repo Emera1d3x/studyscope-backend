@@ -1,89 +1,57 @@
-import { ParentModel, StudentModel } from '../../models/model.user.js';
-import { verifyGoogleIdToken } from '../../middleware/verify.google.js';
-import RefreshToken from '../../models/refreshtoken.model.js';
-import { generateAccessToken, generateRefreshToken } from '../../generators/generator.token.js';
+import { ParentModel } from '../../models/model.user.js';
+import { verifyGoogleIdTokenHelper } from '../../middleware/verify.google.js';
 import { emailParentVerify } from '../../emails/parent/email.parent.verify.js';
+import { emailParentSuccess } from '../../emails/parent/email.parent.success.js';
 
 export async function signupParent(req, res) {
   try {
-    const loginMethodInput = req.body.loginMethod;
-    if (loginMethodInput === 'email') {
-      const nameInput = req.body.name;
-      const emailInput = req.body.email;
-      const passwordInput = req.body.password;
-      const studentName = req.body.studentName;
-      const studentEmail = req.body.studentEmail;
-      if (!nameInput || !emailInput || !passwordInput || !studentName || !studentEmail || nameInput.trim() === '' || emailInput.trim() === '' || passwordInput.trim() === '' || studentName.trim() === '' || studentEmail.trim() === '') {
+    const { loginMethod, name, email, password, googleSecret } = req.body;
+    if (loginMethod === 'email') {
+      if (!name || !email || !password || name.trim() === '' || email.trim() === '' || password.trim() === '') {
         return res.status(400).json({ error: 'Missing required fields' });
       }
-      if (!emailInput.includes('@') || !studentEmail.includes('@')) {return res.status(400).json({ error: 'Invalid email' });}
-      if (passwordInput.length <= 4) {return res.status(400).json({ error: 'Password too short' });}
-      if (passwordInput.length > 20) {return res.status(400).json({ error: 'Password too long' });}
-      const existingParent = await ParentModel.findOne({ email: emailInput });
-      const existingStudent = await StudentModel.findOne({ email: emailInput });
+      if (!email.includes('@')) {return res.status(400).json({ error: 'Invalid email' });}
+      if (password.length < 5) {return res.status(400).json({ error: 'Password too short' });}
+      if (password.length > 20) {return res.status(400).json({ error: 'Password too long' });}
+      const existingParent = await ParentModel.findOne({ email: email });
       if (existingParent) {
         if (existingParent.emailVerified) {return res.status(400).json({ error: 'Parent Email Already Used' });}
         else {await existingParent.deleteOne();}
       }
-      if (existingStudent) {
-        if (existingStudent.emailVerified) {return res.status(400).json({ error: 'Student Email Already Used' });}
-        else {await existingStudent.deleteOne();}
-      }
       const verificationTokenSecret = Math.floor(100000 + Math.random() * 900000);
       const parent = new ParentModel({
-        name: nameInput,
-        email: emailInput,
-        password: passwordInput,
+        name: name,
+        email: email,
+        password: password,
         loginMethod: 'email',
         emailVerified: false,
         verificationToken: verificationTokenSecret,
         verificationTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
       });
       await parent.save();
-      const student = new StudentModel({
-        name: studentName,
-        email: studentEmail,
-        parentId: parent._id,
-        loginMethod: 'email',
-        emailVerified: false
-      });
-      await student.save();
-      await emailParentVerify(parent.email, verificationTokenSecret);
-      return res.json('Success:ParentAndStudentCreated_VerificationSent');
-    } else if (loginMethodInput === 'google') {
-      const nameInput = req.body.name;
-      const emailInput = req.body.email;
-      const googleSecretInput = req.body.googleSecret;
-      const studentName = req.body.studentName;
-      const studentEmail = req.body.studentEmail;
-      if (!emailInput || emailInput.trim() === '' || !emailInput.includes('@') || !studentName || !studentEmail || studentName.trim() === '' || studentEmail.trim() === '' || !studentEmail.includes('@')) {
-        return res.status(400).json({ error: 'Invalid email or missing fields' });
+      await emailParentVerify(parent.email, parent.name, verificationTokenSecret);
+      return res.json('Success:VerificationSent');
+    } else if (loginMethod === 'google') {
+      if (!googleSecret) return res.status(400).json({ error: 'Missing Google token' });
+      const payload = await verifyGoogleIdTokenHelper(googleSecret);
+      if (!payload) return res.status(400).json({ error: 'Google auth failed' });
+      const existingParent = await ParentModel.findOne({ email: payload.email });
+      if (existingParent) {
+        if (existingParent.emailVerified) {
+          return res.status(400).json({ error: 'Email already exists' });
+        } else {
+          await existingParent.deleteOne();
+        }
       }
-      const existingParent = await ParentModel.findOne({ email: emailInput });
-      if (existingParent) {return res.status(400).json({ error: 'Email already exists' });}
-      const fromGoogle = await verifyGoogleIdToken(req, res);
-      if (!fromGoogle) {return res.status(400).json({ error: 'Google auth failed' });}
-      const verificationTokenSecret = Math.floor(100000 + Math.random() * 900000);
       const parent = new ParentModel({
-        name: nameInput,
-        email: emailInput,
-        password: '12345',
+        name: payload.name,
+        email: payload.email,
         loginMethod: 'google',
-        emailVerified: false,
-        verificationToken: verificationTokenSecret,
-        verificationTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+        emailVerified: true,
       });
       await parent.save();
-      const student = new StudentModel({
-        name: studentName,
-        email: studentEmail,
-        parentId: parent._id,
-        loginMethod: 'google',
-        emailVerified: false
-      });
-      await student.save();
-      await emailParentVerify(parent.email, verificationTokenSecret);
-      return res.json('Success:ParentAndStudentCreated_VerificationSent');
+      await emailParentSuccess(parent.email);
+      return res.json('Success:AccountCreated');
     } else {
       return res.status(400).json({ error: 'Invalid login method' });
     }

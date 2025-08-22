@@ -10,7 +10,6 @@ export async function fetchParentProfile(req, res) {
       name: parent.name,
       email: parent.email,
       loginMethod: parent.loginMethod,
-      phoneNumber: parent.phoneNumber,
       paymentHistory: parent.paymentHistory
     });
   } catch (err) {
